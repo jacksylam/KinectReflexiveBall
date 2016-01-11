@@ -580,6 +580,8 @@ namespace Kinect2Sample
                         Joint rightHand = body.Joints[JointType.HandRight];
                         Joint leftHand = body.Joints[JointType.HandLeft];
 
+                        Joint spineMid = body.Joints[JointType.SpineMid];
+
                         //Convert Camera space (for body) to Depth space (for Innfrared)
                         DepthSpacePoint rightPoint = this.kinectSensor.CoordinateMapper.MapCameraPointToDepthSpace(rightHand.Position);
                         DepthSpacePoint leftPoint = this.kinectSensor.CoordinateMapper.MapCameraPointToDepthSpace(leftHand.Position);
@@ -587,6 +589,10 @@ namespace Kinect2Sample
                         int rightHandY = (int) rightPoint.Y;
                         int leftHandX = (int) leftPoint.X;
                         int leftHandY = (int)leftPoint.Y;
+
+                        DepthSpacePoint spineMidPoint = this.kinectSensor.CoordinateMapper.MapCameraPointToDepthSpace(spineMid.Position);
+                        int spineMidX = (int)spineMidPoint.X;
+                        int spineMidY = (int) spineMidPoint.Y;
 
                         //Find x and y from 1D array
                         int indexX = i % infraredWidth;
@@ -599,13 +605,39 @@ namespace Kinect2Sample
                             ((indexX < leftHandX + 20 && indexX > leftHandX - 20) &&
                             (indexY < leftHandY + 20 && indexY > leftHandY - 20)))
                         {
-                            this.infraredPixels[colorPixelIndex++] = 0; //Blue
-                            this.infraredPixels[colorPixelIndex++] = 0; //Green
-                            this.infraredPixels[colorPixelIndex++] = intensity; //Red
-                            this.infraredPixels[colorPixelIndex++] = 255;       //Alpha
+                            if (indexX < spineMidX && indexY < spineMidY)
+                            {
+                                this.infraredPixels[colorPixelIndex++] = 0; //Blue
+                                this.infraredPixels[colorPixelIndex++] = 0; //Green
+                                this.infraredPixels[colorPixelIndex++] = intensity; //Red
+                                this.infraredPixels[colorPixelIndex++] = 255;       //Alpha
+                            }
+                            else if (indexX > spineMidX && indexY < spineMidY)
+                            {
+                                this.infraredPixels[colorPixelIndex++] = intensity; //Blue
+                                this.infraredPixels[colorPixelIndex++] = 0; //Green
+                                this.infraredPixels[colorPixelIndex++] = 0; //Red
+                                this.infraredPixels[colorPixelIndex++] = 255;       //Alpha
+                            }
+                            else if (indexX < spineMidX && indexY > spineMidY)
+                            {
+                                this.infraredPixels[colorPixelIndex++] = 0; //Blue
+                                this.infraredPixels[colorPixelIndex++] = intensity; //Green
+                                this.infraredPixels[colorPixelIndex++] = 0; //Red
+                                this.infraredPixels[colorPixelIndex++] = 255;       //Alpha
+                            }
+                            else
+                            {
+                                this.infraredPixels[colorPixelIndex++] = intensity; //Blue
+                                this.infraredPixels[colorPixelIndex++] = intensity; //Green
+                                this.infraredPixels[colorPixelIndex++] = 0; //Red
+                                this.infraredPixels[colorPixelIndex++] = 255;       //Alpha
+                            }
+                           
                             isRetroReflexiveBall = true;
                             break;
                         }
+
 
                     }
 
@@ -621,6 +653,8 @@ namespace Kinect2Sample
                 }
                 else
                 {
+
+         
                     this.infraredPixels[colorPixelIndex++] = intensity; //Blue
                     this.infraredPixels[colorPixelIndex++] = intensity; //Green
                     this.infraredPixels[colorPixelIndex++] = intensity; //Red
