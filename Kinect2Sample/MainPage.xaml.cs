@@ -581,6 +581,7 @@ namespace Kinect2Sample
                         Joint leftHand = body.Joints[JointType.HandLeft];
 
                         Joint spineMid = body.Joints[JointType.SpineMid];
+                        Joint spineBase = body.Joints[JointType.SpineBase];
 
                         //Convert Camera space (for body) to Depth space (for Innfrared)
                         DepthSpacePoint rightPoint = this.kinectSensor.CoordinateMapper.MapCameraPointToDepthSpace(rightHand.Position);
@@ -594,6 +595,14 @@ namespace Kinect2Sample
                         int spineMidX = (int)spineMidPoint.X;
                         int spineMidY = (int) spineMidPoint.Y;
 
+                        DepthSpacePoint spineBasePoint = this.kinectSensor.CoordinateMapper.MapCameraPointToDepthSpace(spineBase.Position);
+                        int spineBaseX = (int)spineBasePoint.X;
+                        int spineBaseY = (int)spineBasePoint.Y;
+
+
+                        int spineAverageX = (spineMidX + spineBaseX) / 2;
+                        int spineAverageY = (spineMidY + spineBaseY) / 2;
+
                         //Find x and y from 1D array
                         int indexX = i % infraredWidth;
                         int indexY = i / infraredWidth;
@@ -605,21 +614,21 @@ namespace Kinect2Sample
                             ((indexX < leftHandX + 20 && indexX > leftHandX - 20) &&
                             (indexY < leftHandY + 20 && indexY > leftHandY - 20)))
                         {
-                            if (indexX < spineMidX && indexY < spineMidY)
+                            if (indexX < spineAverageX && indexY < spineAverageY)
                             {
                                 this.infraredPixels[colorPixelIndex++] = 0; //Blue
                                 this.infraredPixels[colorPixelIndex++] = 0; //Green
                                 this.infraredPixels[colorPixelIndex++] = intensity; //Red
                                 this.infraredPixels[colorPixelIndex++] = 255;       //Alpha
                             }
-                            else if (indexX > spineMidX && indexY < spineMidY)
+                            else if (indexX > spineAverageX && indexY < spineAverageY)
                             {
                                 this.infraredPixels[colorPixelIndex++] = intensity; //Blue
                                 this.infraredPixels[colorPixelIndex++] = 0; //Green
                                 this.infraredPixels[colorPixelIndex++] = 0; //Red
                                 this.infraredPixels[colorPixelIndex++] = 255;       //Alpha
                             }
-                            else if (indexX < spineMidX && indexY > spineMidY)
+                            else if (indexX < spineAverageX && indexY > spineAverageY)
                             {
                                 this.infraredPixels[colorPixelIndex++] = 0; //Blue
                                 this.infraredPixels[colorPixelIndex++] = intensity; //Green
