@@ -28,7 +28,8 @@ namespace Kinect2Sample
         Color,
         Depth,
         BodyMask,
-        BodyJoints
+        BodyJoints,
+        Debug
     }
 
     public sealed partial class MainPage : Page, INotifyPropertyChanged
@@ -103,6 +104,7 @@ namespace Kinect2Sample
         private Body[] myBodies;
         private int infraredWidth;
         private int infraredHeight;
+        private int[] labels;
 
         public event PropertyChangedEventHandler PropertyChanged;
         public string StatusText
@@ -191,6 +193,15 @@ namespace Kinect2Sample
                     this.bitmap = new WriteableBitmap(infraredFrameDescription.Width, infraredFrameDescription.Height);
                     break;
 
+                case DisplayFrameType.Debug:
+                    infraredFrameDescription = this.kinectSensor.InfraredFrameSource.FrameDescription;
+                    this.CurrentFrameDescription = infraredFrameDescription;
+                    // allocate space to put the pixels being received and converted
+                    this.infraredFrameData = new ushort[infraredFrameDescription.Width * infraredFrameDescription.Height];
+                    this.infraredPixels = new byte[infraredFrameDescription.Width * infraredFrameDescription.Height * BytesPerPixel];
+                    this.bitmap = new WriteableBitmap(infraredFrameDescription.Width, infraredFrameDescription.Height);
+                    break;
+
                 case DisplayFrameType.Color:
                     colorFrameDescription = this.kinectSensor.ColorFrameSource.FrameDescription;
                     this.CurrentFrameDescription = colorFrameDescription;
@@ -269,6 +280,14 @@ namespace Kinect2Sample
                         ShowInfraredFrame(infraredFrame, bodyFrame);
                     }
                     break;
+                case DisplayFrameType.Debug:
+                    using (infraredFrame = multiSourceFrame.InfraredFrameReference.AcquireFrame())
+                    using(bodyFrame = multiSourceFrame.BodyFrameReference.AcquireFrame())
+                    {
+                        ShowDebugFrame(infraredFrame, bodyFrame);
+                    }
+                    break;
+
                 case DisplayFrameType.Color:
                     using (colorFrame = multiSourceFrame.ColorFrameReference.AcquireFrame())
                     {
@@ -679,11 +698,137 @@ namespace Kinect2Sample
             this.FrameDisplayImage.Source = this.bitmap;
         }
 
+        private void getConnectedComponents()
+        {
+            LabelArray equivalentLabels = new LabelArray();
+            labels = new int[this.infraredFrameData.Length];
+            int labelCount = 1;
 
+            for (int i = 0; i < this.infraredFrameData.Length; ++i)
+            {
+                // normalize the incoming infrared data (ushort) to a float ranging from 
+                // [InfraredOutputValueMinimum, InfraredOutputValueMaximum] by
+                // 1. dividing the incoming value by the source maximum value
+                float intensityRatio = (float)this.infraredFrameData[i] / InfraredSourceValueMaximum;
+
+                // 2. dividing by the (average scene value * standard deviations)
+                intensityRatio /= InfraredSceneValueAverage * InfraredSceneStandardDeviations;
+
+                // 3. limiting the value to InfraredOutputValueMaximum
+                intensityRatio = Math.Min(InfraredOutputValueMaximum, intensityRatio);
+
+                // 4. limiting the lower value InfraredOutputValueMinimum
+                intensityRatio = Math.Max(InfraredOutputValueMinimum, intensityRatio);
+
+                // 5. converting the normalized value to a byte and using the result
+                // as the RGB components required by the image
+                byte intensity = (byte)(intensityRatio * 255.0f);
+
+                if (intensity > 254)
+                {
+                    if (i > infraredWidth && i%infraredWidth != 0 && labels[i - infraredWidth] != 0 && labels[i - 1] == 0) {
+                        labels[i] = labels[i - infraredWidth];
+                    }
+                    else if (i > infraredWidth && i % infraredWidth != 0 && labels[i - infraredWidth] == 0 && labels[i - 1] != 0) {
+                        labels[i] = labels[i - 1];
+                    }
+                    else if (i > infraredWidth && i % infraredWidth != 0 && labels[i - infraredWidth] == 0 && labels[i - 1] == 0) {
+                        labels[i] = labelCount;
+                        labelCount++;
+                    }
+                    else if (i > infraredWidth && i % infraredWidth != 0 && labels[i - infraredWidth] != 0 && labels[i - 1] != 0) {
+                        labels[i] = labels[i - 1];
+                        equivalentLabels.Add(labels[i - 1], labels[i - infraredWidth]);
+                    }
+                    else {
+                        labels[i] = 0;
+                    }
+                }
+                else {
+                    labels[i] = 0;
+                }
+            }
+
+            //perform union
+            for (int i = 0; i < labels.Length; i++) {
+                if (labels[i] != 0){
+                    int tempLabel = equivalentLabels.getEquivalentLabel(labels[i]);
+                    if (tempLabel != 0) {
+                        labels[i] = tempLabel;
+                    }
+                }
+            }
+
+            //Debug.WriteLine("Number of labels = " + equivalentLabels.Size());
+        }
+
+        private void displayConnectedComponents(){
+
+            this.getConnectedComponents();
+            byte intensity = 255;
+
+            int colorPixelIndex = 0;
+            for (int i = 0; i < labels.Length; i++) {
+                if (labels[i] != 0) {
+                    this.infraredPixels[colorPixelIndex++] = intensity; //Blue
+                    this.infraredPixels[colorPixelIndex++] = intensity; //Green
+                    this.infraredPixels[colorPixelIndex++] = intensity; //Red
+                    this.infraredPixels[colorPixelIndex++] = 255;       //Alpha  
+                }
+                else {
+                    this.infraredPixels[colorPixelIndex++] = 0; //Blue
+                    this.infraredPixels[colorPixelIndex++] = 0; //Green
+                    this.infraredPixels[colorPixelIndex++] = 0; //Red
+                    this.infraredPixels[colorPixelIndex++] = 255;       //Alpha  
+                }
+            }
+        }
+
+        private void ShowDebugFrame(InfraredFrame infraredFrame, BodyFrame bodyFrame) {
+            bool infraredFrameProcessed = false;
+
+            if (infraredFrame != null) {
+                FrameDescription infraredFrameDescription = infraredFrame.FrameDescription;
+
+                // verify data and write the new infrared frame data to the display bitmap
+                if (((infraredFrameDescription.Width * infraredFrameDescription.Height)
+                    == this.infraredFrameData.Length) &&
+                    (infraredFrameDescription.Width == this.bitmap.PixelWidth) &&
+                    (infraredFrameDescription.Height == this.bitmap.PixelHeight)) {
+
+                    //Debug.WriteLine("Width is " + infraredFrameDescription.Width);
+                    //Debug.WriteLine("Height is " + infraredFrameDescription.Height);
+
+                    infraredWidth = infraredFrameDescription.Width;
+                    infraredHeight = infraredFrameDescription.Height;
+
+                    // Copy the pixel data from the image to a temporary array
+                    infraredFrame.CopyFrameDataToArray(this.infraredFrameData);
+
+                    infraredFrameProcessed = true;
+                }
+            }
+
+
+            if (bodyFrame != null && bodyFrame.BodyCount > 0) {
+                myBodies = new Body[this.kinectSensor.BodyFrameSource.BodyCount];
+                bodyFrame.GetAndRefreshBodyData(myBodies);
+            }
+
+            // we got a frame, convert and render
+            if (infraredFrameProcessed) {
+                this.displayConnectedComponents();
+                this.RenderPixelArray(this.infraredPixels);
+            }
+        }
 
         private void InfraredButton_Click(object sender, RoutedEventArgs e)
         {
             SetupCurrentDisplay(DisplayFrameType.Infrared);
+        }
+
+        private void DebugButton_Click(object sender, RoutedEventArgs e) {
+            SetupCurrentDisplay(DisplayFrameType.Debug);
         }
 
         private void ColorButton_Click(object sender, RoutedEventArgs e)
