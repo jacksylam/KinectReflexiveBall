@@ -105,6 +105,7 @@ namespace Kinect2Sample
         private int infraredWidth;
         private int infraredHeight;
         private int[] labels;
+        private int[] binaryMat;
 
         public event PropertyChangedEventHandler PropertyChanged;
         public string StatusText
@@ -681,8 +682,6 @@ namespace Kinect2Sample
                 }
                 else
                 {
-
-         
                     this.infraredPixels[colorPixelIndex++] = intensity; //Blue
                     this.infraredPixels[colorPixelIndex++] = intensity; //Green
                     this.infraredPixels[colorPixelIndex++] = intensity; //Red
@@ -698,14 +697,10 @@ namespace Kinect2Sample
             this.FrameDisplayImage.Source = this.bitmap;
         }
 
-        private void getConnectedComponents()
-        {
-            LabelArray equivalentLabels = new LabelArray();
-            labels = new int[this.infraredFrameData.Length];
-            int labelCount = 1;
+        private void makeBinaryMat() {
+            binaryMat = new int[this.infraredFrameData.Length];
 
-            for (int i = 0; i < this.infraredFrameData.Length; ++i)
-            {
+            for (int i = 0; i < this.infraredFrameData.Length; i++) {
                 // normalize the incoming infrared data (ushort) to a float ranging from 
                 // [InfraredOutputValueMinimum, InfraredOutputValueMaximum] by
                 // 1. dividing the incoming value by the source maximum value
@@ -724,7 +719,66 @@ namespace Kinect2Sample
                 // as the RGB components required by the image
                 byte intensity = (byte)(intensityRatio * 255.0f);
 
-                if (intensity > 254)
+                if (intensity > 254) {
+                    binaryMat[i] = 1;
+                }
+                else {
+                    binaryMat[i] = 0;
+                }
+            }
+            
+        }
+
+        private int[] dialate(int[] binaryMat) {
+            int[] ret = new int[this.binaryMat.Length];
+
+            for (int i = 0; i < this.binaryMat.Length; i++) {
+                if (this.binaryMat[i] == 1) {
+                    ret[i] = 1;
+                    if (i + 1 % infraredWidth != 0) {
+                        ret[i + 1] = 1;
+                    }
+                    if (i - 1 % infraredWidth != infraredWidth - 1) {
+                        ret[i - 1] = 1;
+                    }
+                    if (i - infraredWidth < 0) {
+                        ret[i - infraredWidth] = 1;
+                    }
+                    if (i + infraredWidth < this.binaryMat.Length) {
+                        ret[i + infraredWidth] = 1;
+                    }
+                }
+                else {
+                    ret[i] = 0;
+                }
+            }
+            return ret;
+        }
+
+        private int[] erode(int[] binaryMat) {
+            int[] ret = new int[this.binaryMat.Length];
+
+            for (int i = 0; i < this.binaryMat.Length; i++) {
+                if (i%infraredWidth != 0 && i > infraredWidth && i < binaryMat.Length && i%infraredWidth != infraredWidth - 1 && 
+                    binaryMat[i] == 1 && binaryMat[i+1] == 1 && binaryMat[i-1] == 1 && binaryMat[i+infraredWidth] == 1 && binaryMat[i-infraredWidth] == 1) {
+                    ret[i] = 1;
+                }
+                else {
+                    ret[i] = 0;
+                }
+            }
+            return ret;
+        }
+
+        private void getConnectedComponents()
+        {
+            LabelArray equivalentLabels = new LabelArray();
+            labels = new int[this.binaryMat.Length];
+            int labelCount = 1;
+
+            for (int i = 0; i < this.binaryMat.Length; ++i)
+            {
+                if (binaryMat[i] == 1)
                 {
                     if (i > infraredWidth && i%infraredWidth != 0 && labels[i - infraredWidth] != 0 && labels[i - 1] == 0) {
                         labels[i] = labels[i - infraredWidth];
@@ -759,11 +813,13 @@ namespace Kinect2Sample
                 }
             }
 
-            //Debug.WriteLine("Number of labels = " + equivalentLabels.Size());
+            Debug.WriteLine("Number of labels = " + equivalentLabels.Size());
         }
 
         private void displayConnectedComponents(){
-
+            this.makeBinaryMat();
+           binaryMat =  this.erode(binaryMat);
+           binaryMat = this.dialate(binaryMat);
             this.getConnectedComponents();
             byte intensity = 255;
 
