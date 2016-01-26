@@ -154,7 +154,6 @@ namespace Kinect2Sample
 
             this.multiSourceFrameReader = this.kinectSensor.OpenMultiSourceFrameReader(FrameSourceTypes.Infrared |  FrameSourceTypes.Depth | FrameSourceTypes.BodyIndex | FrameSourceTypes.Body);
 
-
             this.multiSourceFrameReader.MultiSourceFrameArrived += this.Reader_MultiSourceFrameArrived;
 
             // set IsAvailableChanged event notifier
@@ -877,6 +876,18 @@ namespace Kinect2Sample
                 this.RenderPixelArray(this.infraredPixels);
             }
         }
+
+        //128 quadrant
+        private void dualTree() {
+            int[] histogram = new int[128];
+
+            for (int i = 0; i < binaryMat.Length; i++) {
+                if (binaryMat[i] == 1) {
+                    
+                }
+            }
+        }
+
 
         private void InfraredButton_Click(object sender, RoutedEventArgs e)
         {
