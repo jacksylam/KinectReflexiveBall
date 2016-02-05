@@ -877,17 +877,59 @@ namespace Kinect2Sample
             }
         }
 
-        //128 quadrant
+        //9 quadrant. Each quadrant is the size 64 x 53
         private void dualTree() {
-            int[] histogram = new int[128];
+            int[] histogram = new int[9];
 
             for (int i = 0; i < binaryMat.Length; i++) {
                 if (binaryMat[i] == 1) {
-                    
+                    if (getIndexX(i) < 64) {
+                        if (getIndexY(i) < 53) {
+                            histogram[0] = histogram[0]++;
+                        }
+                        else if (getIndexY(i) < 106 && getIndexY(i) >= 53) {
+                            histogram[3] = histogram[3]++;
+                        }
+                        else {
+                            histogram[6] = histogram[6]++;
+                        }
+                    }
+                    else if (getIndexX(i) < 128 && getIndexX(i) >= 64) {
+                        if (getIndexY(i) < 53) {
+                            histogram[1] = histogram[1]++;
+                        }
+                        else if (getIndexY(i) < 106 && getIndexY(i) >= 53) {
+                            histogram[4] = histogram[4]++;
+                        }
+                        else {
+                            histogram[7] = histogram[7]++;
+                        }
+                    }
+                    else {
+                        if (getIndexY(i) < 53) {
+                            histogram[2] = histogram[2]++;
+                        }
+                        else if (getIndexY(i) < 106 && getIndexY(i) >= 53) {
+                            histogram[5] = histogram[5]++;
+                        }
+                        else {
+                            histogram[8] = histogram[8]++;
+                        }
+                    }
                 }
             }
         }
 
+
+        //Get the x coordinate in 1D matrix.
+        private int getIndexX(int i) {
+            return i % infraredWidth;
+        }
+
+        //Get the y coordinate in 1D matrix.
+        private int getIndexY(int i) {
+            return i / infraredWidth;
+        }
 
         private void InfraredButton_Click(object sender, RoutedEventArgs e)
         {
