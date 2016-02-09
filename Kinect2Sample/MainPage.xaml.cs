@@ -875,30 +875,35 @@ namespace Kinect2Sample
                 this.displayConnectedComponents();
                 this.RenderPixelArray(this.infraredPixels);
             }
+
+            dualTree();
         }
 
-        //9 quadrant. Each quadrant is the size 64 x 53
+        //Use 512 x 400, divisible by 8
+        //9 quadrant. Each quadrant is the size 64 x 50
         private void dualTree() {
             int[] histogram = new int[9];
+            int yLimit = 50;
+            int xLimit = 64;
 
             for (int i = 0; i < binaryMat.Length; i++) {
                 if (binaryMat[i] == 1) {
-                    if (getIndexX(i) < 64) {
-                        if (getIndexY(i) < 53) {
+                    if (getIndexX(i) < xLimit) {
+                        if (getIndexY(i) < yLimit) {
                             histogram[0] = histogram[0]++;
                         }
-                        else if (getIndexY(i) < 106 && getIndexY(i) >= 53) {
+                        else if (getIndexY(i) < (yLimit*2) && getIndexY(i) >= yLimit) {
                             histogram[3] = histogram[3]++;
                         }
                         else {
                             histogram[6] = histogram[6]++;
                         }
                     }
-                    else if (getIndexX(i) < 128 && getIndexX(i) >= 64) {
+                    else if (getIndexX(i) < (xLimit*2) && getIndexX(i) >= xLimit) {
                         if (getIndexY(i) < 53) {
                             histogram[1] = histogram[1]++;
                         }
-                        else if (getIndexY(i) < 106 && getIndexY(i) >= 53) {
+                        else if (getIndexY(i) < (yLimit*2) && getIndexY(i) >= yLimit) {
                             histogram[4] = histogram[4]++;
                         }
                         else {
@@ -906,10 +911,10 @@ namespace Kinect2Sample
                         }
                     }
                     else {
-                        if (getIndexY(i) < 53) {
+                        if (getIndexY(i) < yLimit) {
                             histogram[2] = histogram[2]++;
                         }
-                        else if (getIndexY(i) < 106 && getIndexY(i) >= 53) {
+                        else if (getIndexY(i) < (yLimit*2) && getIndexY(i) >= yLimit) {
                             histogram[5] = histogram[5]++;
                         }
                         else {
