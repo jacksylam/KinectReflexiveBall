@@ -23,7 +23,7 @@ using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 using Emgu.CV.Util;
-using System.drawing
+
 
 
 namespace Kinect2Sample
@@ -826,8 +826,9 @@ namespace Kinect2Sample
            //binaryMat =  this.erode(binaryMat);
            //binaryMat = this.dialate(binaryMat);
             this.getConnectedComponents();
-            dualTree();
+          //  dualTree();
 
+            EMGUTest();
             byte intensity = 255;
             int colorPixelIndex = 0;
             for (int i = 0; i < labels.Length; i++) {
@@ -963,11 +964,11 @@ namespace Kinect2Sample
             double circleAccumulatorThreshold = 120;
             CircleF[] circles = CvInvoke.HoughCircles(uimage, HoughType.Gradient, 2.0, 20.0, cannyThreshold, circleAccumulatorThreshold, 5);
 
-            Mat circleImage = new Mat(img.Size, DepthType.Cv8U, 3);
-            circleImage.SetTo(new MCvScalar(0));
+           // Mat circleImage = new Mat(img.Size, DepthType.Cv8U, 3);
+            //circleImage.SetTo(new MCvScalar(0));
             foreach (CircleF circle in circles)
-                CvInvoke.Circle(circleImage, Point.Round(circle.Center), (int)circle.Radius, new Bgr(255,0,0).MCvScalar, 2);
-
+                //CvInvoke.Circle(circleImage, Point.Round(circle.Center), (int)circle.Radius, new Bgr(255,0,0).MCvScalar, 2);
+                Debug.WriteLine(circle.ToString());
         }
 
 
