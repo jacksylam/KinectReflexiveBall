@@ -19,6 +19,12 @@ using Windows.Storage.Streams;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
 using Windows.UI.Xaml.Shapes;
+using Emgu.CV;
+using Emgu.CV.CvEnum;
+using Emgu.CV.Structure;
+using Emgu.CV.Util;
+using System.drawing
+
 
 namespace Kinect2Sample
 {
@@ -817,11 +823,12 @@ namespace Kinect2Sample
 
         private void displayConnectedComponents(){
             this.makeBinaryMat();
-           binaryMat =  this.erode(binaryMat);
-           binaryMat = this.dialate(binaryMat);
+           //binaryMat =  this.erode(binaryMat);
+           //binaryMat = this.dialate(binaryMat);
             this.getConnectedComponents();
-            byte intensity = 255;
+            dualTree();
 
+            byte intensity = 255;
             int colorPixelIndex = 0;
             for (int i = 0; i < labels.Length; i++) {
                 if (labels[i] != 0) {
@@ -876,7 +883,6 @@ namespace Kinect2Sample
                 this.RenderPixelArray(this.infraredPixels);
             }
 
-            dualTree();
         }
 
         //Use 512 x 400, divisible by 8
@@ -886,7 +892,9 @@ namespace Kinect2Sample
             int yLimit = 50;
             int xLimit = 64;
 
-            for (int i = 0; i < binaryMat.Length; i++) {
+            int newLength = 512 * 400;
+
+            for (int i = 0; i < newLength; i++) {
                 if (binaryMat[i] == 1) {
                     if (getIndexX(i) < xLimit) {
                         if (getIndexY(i) < yLimit) {
@@ -923,6 +931,43 @@ namespace Kinect2Sample
                     }
                 }
             }
+
+            Debug.WriteLine("asdf");
+        }
+
+        private void EMGUTest() {
+            Mat img = new Mat(infraredWidth, infraredHeight, DepthType.Cv8U, 3); //Create a 3 channel image
+            Image<Gray, Byte> image = new Image<Gray, Byte>( infraredWidth, infraredHeight);
+            for (int i = 0; i < infraredWidth; i++) {
+                for (int j = 0; j < infraredHeight; j++) {
+                    if (binaryMat[i * infraredWidth + j] == 1) {
+                        image[i, j] = new Gray(255);
+                    }
+                    else {
+                        image[i, j] = new Gray(0);
+                    }
+                }
+            }
+
+
+            UMat uimage = new UMat();
+            CvInvoke.CvtColor(image, uimage, ColorConversion.Bgr2Gray);
+
+            //use image pyr to remove noise
+            UMat pyrDown = new UMat();
+            CvInvoke.PyrDown(uimage, pyrDown);
+            CvInvoke.PyrUp(pyrDown, uimage);
+
+
+            double cannyThreshold = 180.0;
+            double circleAccumulatorThreshold = 120;
+            CircleF[] circles = CvInvoke.HoughCircles(uimage, HoughType.Gradient, 2.0, 20.0, cannyThreshold, circleAccumulatorThreshold, 5);
+
+            Mat circleImage = new Mat(img.Size, DepthType.Cv8U, 3);
+            circleImage.SetTo(new MCvScalar(0));
+            foreach (CircleF circle in circles)
+                CvInvoke.Circle(circleImage, Point.Round(circle.Center), (int)circle.Radius, new Bgr(255,0,0).MCvScalar, 2);
+
         }
 
 
